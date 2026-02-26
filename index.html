@@ -2,39 +2,36 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>拳之岩 - Web 完整紀錄版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>拳之岩 - 手機/電腦通用版</title>
     <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
     <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
     <style>
-        body { background-color: #2b2b2b; color: white; display: flex; flex-direction: column; align-items: center; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; overflow-x: hidden; }
-        .header { text-align: center; margin-bottom: 10px; }
-        .controls { background: #3c3f41; padding: 15px; border-radius: 8px; display: flex; gap: 10px; align-items: center; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
-        canvas { border: 4px solid #444; background-color: #2b2b2b; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        .stats { font-size: 18px; font-weight: bold; color: #2ecc71; margin: 10px 0; }
-        button, select { padding: 8px 15px; cursor: pointer; border: none; border-radius: 4px; background: #3498db; color: white; font-weight: bold; transition: 0.2s; }
-        button:hover { background: #2980b9; transform: scale(1.05); }
-        .btn-music { background: #9b59b6; }
-        .btn-replay { background: #f1c40f; color: black; }
+        body { background-color: #2b2b2b; color: white; display: flex; flex-direction: column; align-items: center; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 10px; touch-action: manipulation; }
+        .header h1 { font-size: 24px; margin: 10px 0; }
+        .controls { background: #3c3f41; padding: 10px; border-radius: 8px; display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 480px; }
         
-        #startOverlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(20, 20, 20, 0.98);
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            z-index: 1000;
-        }
-        #btnStartGame {
-            padding: 20px 40px; font-size: 24px; background: #2ecc71; color: white;
-            border-radius: 50px; border: none; cursor: pointer; box-shadow: 0 0 15px #2ecc71;
-        }
+        /* 畫布自適應 */
+        canvas { border: 4px solid #444; background-color: #2b2b2b; width: 100%; max-width: 480px; height: auto; image-rendering: pixelated; }
+        
+        .stats { font-size: 16px; font-weight: bold; color: #2ecc71; margin: 5px 0; }
+        button, select { padding: 8px 12px; cursor: pointer; border: none; border-radius: 4px; background: #3498db; color: white; font-size: 14px; }
+        
+        /* 手機虛擬按鈕組樣式 */
+        .mobile-pad { display: grid; grid-template-areas: ". up ." "left . right" ". down ."; gap: 10px; margin-top: 15px; }
+        .joy-btn { width: 60px; height: 60px; background: #555; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; user-select: none; -webkit-tap-highlight-color: transparent; }
+        .joy-btn:active { background: #888; transform: scale(0.9); }
+        .btn-up { grid-area: up; } .btn-down { grid-area: down; } .btn-left { grid-area: left; } .btn-right { grid-area: right; }
+
+        #startOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20, 20, 20, 0.98); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; }
+        #btnStartGame { padding: 20px 40px; font-size: 24px; background: #2ecc71; color: white; border-radius: 50px; border: none; }
     </style>
 </head>
 <body>
 
     <div id="startOverlay">
-        <h1 style="color:white; margin-bottom:30px; font-size: 40px;">拳之岩 - 柴犬冒險</h1>
-        <button id="btnStartGame">進入遊戲 (同步紀錄並啟動)</button>
-        <p style="color:#888; margin-top:20px;">系統將自動載入您的 88 關通關紀錄</p>
+        <h1 style="color:white; margin-bottom:30px;">拳之岩</h1>
+        <button id="btnStartGame">開始遊戲</button>
     </div>
 
     <div class="header">
@@ -43,18 +40,20 @@
     </div>
 
     <div class="controls">
-        <label>選擇關卡：</label>
         <select id="levelSelect"></select>
-        <button id="btnReset">重玩 (S)</button>
-        <button id="btnUndo">悔棋 (R)</button>
-        <button id="btnReplay" class="btn-replay">觀看紀錄重播</button>
-        <button id="btnMusic" class="btn-music">🎵 音樂：開啟</button>
+        <button id="btnUndo">悔棋</button>
+        <button id="btnReset">重玩</button>
+        <button id="btnReplay" style="background:#f1c40f; color:black;">重播</button>
+        <button id="btnMusic" style="background:#9b59b6;">🎵 音樂</button>
     </div>
 
     <canvas id="gameCanvas" width="480" height="480"></canvas>
 
-    <div style="margin-top: 15px; color: #888; font-size: 14px; text-align: center;">
-        操作：[方向鍵] 移動 | [R] 悔棋 | [S] 重玩 | [Q] 停止重播
+    <div class="mobile-pad">
+        <div class="joy-btn btn-up" id="padUp">▲</div>
+        <div class="joy-btn btn-left" id="padLeft">◀</div>
+        <div class="joy-btn btn-right" id="padRight">▶</div>
+        <div class="joy-btn btn-down" id="padDown">▼</div>
     </div>
 
     <py-config>
@@ -81,9 +80,7 @@
                 self.music_on = True
                 self.is_replaying = False
                 self.facing = "down"
-                
                 self.images = {}
-                self.all_levels = []
                 
                 self.init_resources()
                 self.load_data()
@@ -101,7 +98,6 @@
                     img = js.Image.new()
                     img.src = path
                     self.images[key] = img
-
                 self.bgm = js.Audio.new("背景音樂.mp3")
                 self.bgm.loop = True
 
@@ -111,20 +107,12 @@
                     sfx.play()
 
             def load_data(self):
-                # 1. 載入關卡
-                with open("levels.json", "r") as f:
-                    self.all_levels = json.load(f)
-                
-                # 2. 匯入紀錄到 localStorage 供 UI 使用
                 try:
+                    with open("levels.json", "r") as f: self.all_levels = json.load(f)
                     with open("fist_of_rock_records.json", "r") as f:
-                        external_recs = json.load(f)
-                        for lvl_key, data in external_recs.items():
-                            js.localStorage.setItem(f"level_{lvl_key}", json.dumps(data))
-                except:
-                    pass
-
-                # 3. 渲染選單標籤
+                        ext_recs = json.load(f)
+                        for k, v in ext_recs.items(): js.localStorage.setItem(f"level_{k}", json.dumps(v))
+                except: pass
                 self.refresh_level_menu()
 
             def refresh_level_menu(self):
@@ -133,14 +121,8 @@
                 for i in range(len(self.all_levels)):
                     opt = js.document.createElement("option")
                     opt.value = str(i)
-                    
-                    # 檢查紀錄標記
                     data_str = js.localStorage.getItem(f"level_{i}")
-                    if data_str:
-                        rec = json.loads(data_str)
-                        opt.text = f"第 {i+1} 關 [★ {rec.get('steps')}步 | {rec.get('time')}s]"
-                    else:
-                        opt.text = f"第 {i+1} 關"
+                    opt.text = f"第 {i+1} 關" + (f" ★" if data_str else "")
                     select.add(opt)
                 select.value = str(self.current_level_idx)
 
@@ -151,13 +133,7 @@
                     r_list = list(row)
                     while len(r_list) < 12: r_list.append('w')
                     self.grid.append(r_list[:12])
-                while len(self.grid) < 12: self.grid.append(['w']*12)
-                
-                self.history = []
-                self.steps = 0
-                self.move_history_keys = []
-                self.is_replaying = False
-                
+                self.history = []; self.steps = 0; self.move_history_keys = []; self.is_replaying = False
                 for y in range(12):
                     for x in range(12):
                         if self.grid[y][x] == 'p': self.px, self.py = x, y
@@ -169,30 +145,21 @@
                     for x in range(12):
                         char = self.grid[y][x]
                         x_pos, y_pos = x * self.cell_size, y * self.cell_size
-                        self.ctx.strokeStyle = "#444"
-                        self.ctx.strokeRect(x_pos, y_pos, self.cell_size, self.cell_size)
-                        
-                        if char == 'p':
-                            self.ctx.drawImage(self.images[f'p_{self.facing}'], x_pos, y_pos, 40, 40)
-                        elif char in self.images:
-                            self.ctx.drawImage(self.images[char], x_pos, y_pos, 40, 40)
-                
+                        self.ctx.strokeStyle = "#444"; self.ctx.strokeRect(x_pos, y_pos, self.cell_size, self.cell_size)
+                        if char == 'p': self.ctx.drawImage(self.images[f'p_{self.facing}'], x_pos, y_pos, 40, 40)
+                        elif char in self.images: self.ctx.drawImage(self.images[char], x_pos, y_pos, 40, 40)
                 js.document.getElementById("stats").innerHTML = f"第 {self.current_level_idx+1} 關 | 步數: {self.steps}"
 
             def move(self, dx, dy, direction_name):
                 if self.is_replaying and direction_name not in ["Up", "Down", "Left", "Right"]: return
-                
                 self.facing = direction_name.lower()
                 nx, ny = self.px + dx, self.py + dy
-                
                 if not (0 <= nx < 12 and 0 <= ny < 12) or self.grid[ny][nx] == 'w':
                     if not self.is_replaying: self.play_sfx("HitWall")
-                    self.draw()
-                    return
-
+                    self.draw(); return
+                
                 old_state = (copy.deepcopy(self.grid), self.px, self.py, self.steps, self.facing)
                 target = self.grid[ny][nx]
-
                 if target in ['e', 'h']:
                     self.apply_move(nx, ny, old_state, direction_name)
                 elif target in ['k', 'a', 'r', 's']:
@@ -206,31 +173,25 @@
                         elif target in RULES and beyond == RULES[target]:
                             can_push = True
                             if not self.is_replaying: self.play_sfx(SOUND_MAP[target])
-                        
                         if can_push:
                             if target == 'k' and beyond == 'h':
                                 self.draw()
                                 if not self.is_replaying:
-                                    js.alert(f"完成關卡！步數：{self.steps+1}")
+                                    js.alert(f"通關！步數：{self.steps+1}")
                                     self.save_record(self.steps+1)
                                     self.current_level_idx += 1
-                                    self.refresh_level_menu()
-                                    self.reset_level()
+                                    self.refresh_level_menu(); self.reset_level()
                                 return
-                            self.grid[nny][nnx] = target
-                            self.grid[ny][nx] = 'e'
+                            self.grid[nny][nnx] = target; self.grid[ny][nx] = 'e'
                             self.apply_move(nx, ny, old_state, direction_name)
                         else:
                             if not self.is_replaying: self.play_sfx("HitWall")
                 self.draw()
 
             def apply_move(self, nx, ny, state, d_name):
-                self.history.append(state)
-                self.move_history_keys.append(d_name)
-                self.grid[self.py][self.px] = 'e'
-                self.px, self.py = nx, ny
-                self.grid[ny][nx] = 'p'
-                self.steps += 1
+                self.history.append(state); self.move_history_keys.append(d_name)
+                self.grid[self.py][self.px] = 'e'; self.px, self.py = nx, ny
+                self.grid[ny][nx] = 'p'; self.steps += 1
 
             def undo(self):
                 if self.history:
@@ -239,66 +200,44 @@
                     self.draw()
 
             def save_record(self, steps):
-                # 過關時存檔並更新 UI
                 rec = {"steps": steps, "replay": self.move_history_keys, "time": "HandPlay"}
                 js.localStorage.setItem(f"level_{self.current_level_idx}", json.dumps(rec))
 
             def start_auto_replay(self):
                 data = js.localStorage.getItem(f"level_{self.current_level_idx}")
-                if not data:
-                    js.alert("無紀錄")
-                    return
-                
+                if not data: return
                 replay_moves = json.loads(data)["replay"]
-                self.reset_level()
-                self.is_replaying = True
-                
+                self.reset_level(); self.is_replaying = True
                 def run_steps(idx):
                     if idx < len(replay_moves) and self.is_replaying:
-                        move_name = replay_moves[idx]
+                        m = replay_moves[idx]
                         dirs = {"Up":(0,-1),"Down":(0,1),"Left":(-1,0),"Right":(1,0)}
-                        dx, dy = dirs[move_name]
-                        self.move(dx, dy, move_name)
+                        self.move(dirs[m][0], dirs[m][1], m)
                         js.setTimeout(create_proxy(lambda: run_steps(idx + 1)), 250)
-                    else:
-                        self.is_replaying = False
+                    else: self.is_replaying = False
                 run_steps(0)
 
-            def toggle_music(self, event=None):
-                self.music_on = not self.music_on
-                btn = js.document.getElementById("btnMusic")
-                if self.music_on:
-                    self.bgm.play()
-                    btn.innerHTML = "🎵 音樂：開啟"; btn.style.background = "#9b59b6"
-                else:
-                    self.bgm.pause()
-                    btn.innerHTML = "🔇 音樂：關閉"; btn.style.background = "#e74c3c"
-
             def bind_events(self):
-                def start_game_clicked(event):
-                    js.document.getElementById("startOverlay").style.display = "none"
-                    if self.music_on: self.bgm.play()
-                js.document.getElementById("btnStartGame").onclick = create_proxy(start_game_clicked)
-
-                def on_key(event):
-                    if event.key == "ArrowUp": self.move(0, -1, "Up")
-                    elif event.key == "ArrowDown": self.move(0, 1, "Down")
-                    elif event.key == "ArrowLeft": self.move(-1, 0, "Left")
-                    elif event.key == "ArrowRight": self.move(1, 0, "Right")
-                    elif event.key.lower() == "r": self.undo()
-                    elif event.key.lower() == "s": self.reset_level()
-                    elif event.key.lower() == "q": self.is_replaying = False
+                js.document.getElementById("btnStartGame").onclick = create_proxy(lambda e: (js.document.getElementById("startOverlay").style.setProperty("display", "none"), self.bgm.play()))
+                
+                # 鍵盤
+                def on_key(e):
+                    if e.key == "ArrowUp": self.move(0, -1, "Up")
+                    elif e.key == "ArrowDown": self.move(0, 1, "Down")
+                    elif e.key == "ArrowLeft": self.move(-1, 0, "Left")
+                    elif e.key == "ArrowRight": self.move(1, 0, "Right")
                 js.window.addEventListener("keydown", create_proxy(on_key))
+
+                # 觸控搖桿
+                js.document.getElementById("padUp").onclick = create_proxy(lambda e: self.move(0, -1, "Up"))
+                js.document.getElementById("padDown").onclick = create_proxy(lambda e: self.move(0, 1, "Down"))
+                js.document.getElementById("padLeft").onclick = create_proxy(lambda e: self.move(-1, 0, "Left"))
+                js.document.getElementById("padRight").onclick = create_proxy(lambda e: self.move(1, 0, "Right"))
 
                 js.document.getElementById("btnReset").onclick = create_proxy(lambda e: self.reset_level())
                 js.document.getElementById("btnUndo").onclick = create_proxy(lambda e: self.undo())
-                js.document.getElementById("btnMusic").onclick = create_proxy(self.toggle_music)
                 js.document.getElementById("btnReplay").onclick = create_proxy(lambda e: self.start_auto_replay())
-                
-                def on_change(e):
-                    self.current_level_idx = int(e.target.value)
-                    self.reset_level()
-                js.document.getElementById("levelSelect").onchange = create_proxy(on_change)
+                js.document.getElementById("levelSelect").onchange = create_proxy(lambda e: (setattr(self, 'current_level_idx', int(e.target.value)), self.reset_level()))
 
         game = WebFistOfRock()
     </script>
