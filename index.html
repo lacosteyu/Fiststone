@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>拳之岩 - 究極完整版</title>
+    <title>拳之岩 - 實體房子修復版</title>
     <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
     <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
     <style>
@@ -169,6 +169,8 @@
                 if self.is_replaying and dname not in ["Up", "Down", "Left", "Right"]: return
                 self.facing = dname.lower()
                 nx, ny = self.px + dx, self.py + dy
+                
+                # 牆壁阻擋
                 if not (0<=nx<12 and 0<=ny<12) or self.grid[ny][nx] == 'w':
                     if not self.is_replaying: self.play_sfx("HitWall")
                     self.draw(); return
@@ -176,9 +178,16 @@
                 old = (copy.deepcopy(self.grid), self.px, self.py, self.steps, self.facing)
                 target = self.grid[ny][nx]
                 
-                if target in ['e', 'h']:
+                # 1. 前方是平地
+                if target == 'e':
                     self.grid[self.py][self.px] = 'e'; self.px, self.py = nx, ny
                     self.grid[ny][nx] = 'p'; self.history.append(old); self.move_keys.append(dname); self.steps += 1
+                
+                # 2. 前方是房子 (H) -> 阻擋玩家！
+                elif target == 'h':
+                    if not self.is_replaying: self.play_sfx("HitWall")
+                
+                # 3. 前方是可動物件 (k, a, r, s)
                 elif target in ['k', 'a', 'r', 's']:
                     nnx, nny = nx+dx, ny+dy
                     if 0<=nnx<12 and 0<=nny<12:
@@ -193,7 +202,7 @@
                         
                         if can_push:
                             if target == 'k' and beyond == 'h':
-                                self.draw()
+                                self.draw() # 先畫出推進去的那一瞬間
                                 if not self.is_replaying:
                                     elapsed = round(time.time() - self.start_t, 1)
                                     js.alert(f"通關！步數：{self.steps+1}")
@@ -201,6 +210,7 @@
                                     js.localStorage.setItem(f"level_{self.current_idx}", json.dumps(rec))
                                     self.current_idx += 1; self.refresh_menu(); self.reset_level()
                                 return
+                            # 箱子往前一格，玩家往前一格
                             self.grid[nny][nnx] = target; self.grid[ny][nx] = 'p'
                             self.grid[self.py][self.px] = 'e'; self.px, self.py = nx, ny
                             self.history.append(old); self.move_keys.append(dname); self.steps += 1
