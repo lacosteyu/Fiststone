@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>拳之岩 - 重播加速版</title>
+    <title>拳之岩 - 加速與紀錄完整版</title>
     <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
     <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
     <style>
@@ -121,7 +121,16 @@
                     opt = js.document.createElement("option")
                     opt.value = str(i)
                     d_str = js.localStorage.getItem(f"level_{i}")
-                    opt.text = f"第 {i+1} 關" + (f" [★]" if d_str else "")
+                    if d_str:
+                        try:
+                            rec = json.loads(d_str)
+                            steps = rec.get("steps", "?")
+                            t_val = rec.get("time", "?")
+                            opt.text = f"第 {i+1} 關 [★ {steps}步 | {t_val}s]"
+                        except:
+                            opt.text = f"第 {i+1} 關 [★]"
+                    else:
+                        opt.text = f"第 {i+1} 關"
                     sel.add(opt)
                 sel.value = str(self.current_idx)
 
@@ -216,9 +225,8 @@
                 self.reset_level(); self.is_replaying = True
                 moves = json.loads(d)["replay"]
                 
-                # 取得加速倍率
                 speed_val = int(js.document.getElementById("speedSelect").value)
-                delay = 250 // speed_val # 基礎 250ms 除以倍率
+                delay = 250 // speed_val
 
                 def run(idx):
                     if idx < len(moves) and self.is_replaying:
