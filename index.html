@@ -148,19 +148,16 @@
 
             def draw(self):
                 self.ctx.clearRect(0, 0, 480, 480)
-                raw = self.all_levels[self.current_idx] # 取得原始地圖資料
+                raw = self.all_levels[self.current_idx]
                 
                 for y in range(12):
                     for x in range(12):
                         char = self.grid[y][x]
-                        self.ctx.strokeStyle = "#444"
-                        self.ctx.strokeRect(x*40, y*40, 40, 40)
+                        self.ctx.strokeStyle = "#444"; self.ctx.strokeRect(x*40, y*40, 40, 40)
                         
-                        # 圖層分離：如果原始地圖這裡是房子，永遠先畫出房子
                         if y < len(raw) and x < len(raw[y]) and raw[y][x] == 'h':
                             self.ctx.drawImage(self.images['h'], x*40, y*40, 40, 40)
 
-                        # 再畫上層角色或物品
                         if char == 'p': 
                             self.ctx.drawImage(self.images[f'p_{self.facing}'], x*40, y*40, 40, 40)
                         elif char in self.images and char != 'h': 
@@ -168,4 +165,110 @@
                             
                 js.document.getElementById("stats").innerHTML = f"關卡: {self.current_idx+1} | 步數: {self.steps}"
 
-            def move
+            def move(self, dx, dy, dname):
+                if self.is_replaying and dname not in ["Up", "Down", "Left", "Right"]: return
+                self.facing = dname.lower()
+                nx, ny = self.px + dx, self.py + dy
+                if not (0<=nx<12 and 0<=ny<12) or self.grid[ny][nx] == 'w':
+                    if not self.is_replaying: self.play_sfx("HitWall")
+                    self.draw(); return
+                
+                old = (copy.deepcopy(self.grid), self.px, self.py, self.steps, self.facing)
+                target = self.grid[ny][nx]
+                
+                if target in ['e', 'h']:
+                    self.grid[self.py][self.px] = 'e'; self.px, self.py = nx, ny
+                    self.grid[ny][nx] = 'p'; self.history.append(old); self.move_keys.append(dname); self.steps += 1
+                elif target in ['k', 'a', 'r', 's']:
+                    nnx, nny = nx+dx, ny+dy
+                    if 0<=nnx<12 and 0<=nny<12:
+                        beyond = self.grid[nny][nnx]
+                        can_push = False
+                        if beyond == 'e' or (target == 'k' and beyond == 'h'):
+                            can_push = True
+                            if not self.is_replaying: self.play_sfx("MoveItem")
+                        elif target in RULES and beyond == RULES[target]:
+                            can_push = True
+                            if not self.is_replaying: self.play_sfx(SOUND_MAP[target])
+                        
+                        if can_push:
+                            if target == 'k' and beyond == 'h':
+                                self.draw()
+                                if not self.is_replaying:
+                                    elapsed = round(time.time() - self.start_t, 1)
+                                    js.alert(f"通關！步數：{self.steps+1}")
+                                    rec = {"steps": self.steps+1, "time": str(elapsed), "replay": self.move_keys + [dname]}
+                                    js.localStorage.setItem(f"level_{self.current_idx}", json.dumps(rec))
+                                    self.current_idx += 1; self.refresh_menu(); self.reset_level()
+                                return
+                            self.grid[nny][nnx] = target; self.grid[ny][nx] = 'p'
+                            self.grid[self.py][self.px] = 'e'; self.px, self.py = nx, ny
+                            self.history.append(old); self.move_keys.append(dname); self.steps += 1
+                        else:
+                            if not self.is_replaying: self.play_sfx("HitWall")
+                self.draw()
+
+            def undo(self):
+                if self.history:
+                    state = self.history.pop(); self.move_keys.pop()
+                    self.grid, self.px, self.py, self.steps, self.facing = state
+                    self.draw()
+
+            def play_sfx(self, name):
+                if self.music_on:
+                    s = js.Audio.new(f"{name}.mp3"); s.play()
+
+            def toggle_music(self, event=None):
+                self.music_on = not self.music_on
+                btn = js.document.getElementById("btnMusic")
+                if self.music_on:
+                    self.bgm.play(); btn.innerHTML = "🎵 音樂:開"; btn.style.background = "#9b59b6"
+                else:
+                    self.bgm.pause(); btn.innerHTML = "🔇 音樂:關"; btn.style.background = "#e74c3c"
+
+            def start_replay(self):
+                d = js.localStorage.getItem(f"level_{self.current_idx}")
+                if not d: 
+                    js.alert("本關無紀錄")
+                    return
+                self.reset_level(); self.is_replaying = True
+                moves = json.loads(d)["replay"]
+                
+                speed_val = int(js.document.getElementById("speedSelect").value)
+                delay = 250 // speed_val
+
+                def run(idx):
+                    if idx < len(moves) and self.is_replaying:
+                        m = moves[idx]
+                        dirs = {"Up":(0,-1),"Down":(0,1),"Left":(-1,0),"Right":(1,0)}
+                        self.move(dirs[m][0], dirs[m][1], m)
+                        js.setTimeout(create_proxy(lambda: run(idx+1)), delay)
+                    else: self.is_replaying = False
+                run(0)
+
+            def bind_all_events(self):
+                js.document.getElementById("btnStartGame").onclick = create_proxy(lambda e: (js.document.getElementById("startOverlay").style.setProperty("display","none"), self.bgm.play()))
+                
+                def on_kd(e):
+                    if self.is_replaying: return
+                    dirs = {"ArrowUp":(0,-1,"Up"), "ArrowDown":(0,1,"Down"), "ArrowLeft":(-1,0,"Left"), "ArrowRight":(1,0,"Right")}
+                    if e.key in dirs: self.move(dirs[e.key][0], dirs[e.key][1], dirs[e.key][2])
+                    elif e.key.lower() == "r": self.undo()
+                    elif e.key.lower() == "s": self.reset_level()
+                    elif e.key.lower() == "q": self.is_replaying = False
+                js.window.addEventListener("keydown", create_proxy(on_kd))
+
+                js.document.getElementById("padUp").onclick = create_proxy(lambda e: self.move(0,-1,"Up"))
+                js.document.getElementById("padDown").onclick = create_proxy(lambda e: self.move(0,1,"Down"))
+                js.document.getElementById("padLeft").onclick = create_proxy(lambda e: self.move(-1,0,"Left"))
+                js.document.getElementById("padRight").onclick = create_proxy(lambda e: self.move(1,0,"Right"))
+                js.document.getElementById("btnReset").onclick = create_proxy(lambda e: self.reset_level())
+                js.document.getElementById("btnUndo").onclick = create_proxy(lambda e: self.undo())
+                js.document.getElementById("btnReplay").onclick = create_proxy(lambda e: self.start_replay())
+                js.document.getElementById("btnMusic").onclick = create_proxy(self.toggle_music)
+                js.document.getElementById("levelSelect").onchange = create_proxy(lambda e: (setattr(self, 'current_idx', int(e.target.value)), self.reset_level()))
+
+        app = WebFistOfRock()
+    </script>
+</body>
+</html>
