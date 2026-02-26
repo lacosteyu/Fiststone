@@ -3,23 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>拳之岩 - 紀錄同步版</title>
+    <title>拳之岩 - Web 完整紀錄版</title>
     <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
     <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
     <style>
-        body { background-color: #2b2b2b; color: white; display: flex; flex-direction: column; align-items: center; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; }
+        body { background-color: #2b2b2b; color: white; display: flex; flex-direction: column; align-items: center; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; overflow-x: hidden; }
         .header { text-align: center; margin-bottom: 10px; }
         .controls { background: #3c3f41; padding: 15px; border-radius: 8px; display: flex; gap: 10px; align-items: center; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
         canvas { border: 4px solid #444; background-color: #2b2b2b; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
         .stats { font-size: 18px; font-weight: bold; color: #2ecc71; margin: 10px 0; }
-        button, select { padding: 8px 15px; cursor: pointer; border: none; border-radius: 4px; background: #3498db; color: white; font-weight: bold; }
-        button:hover { background: #2980b9; }
+        button, select { padding: 8px 15px; cursor: pointer; border: none; border-radius: 4px; background: #3498db; color: white; font-weight: bold; transition: 0.2s; }
+        button:hover { background: #2980b9; transform: scale(1.05); }
         .btn-music { background: #9b59b6; }
         .btn-replay { background: #f1c40f; color: black; }
         
         #startOverlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(20, 20, 20, 0.95);
+            background: rgba(20, 20, 20, 0.98);
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             z-index: 1000;
         }
@@ -33,13 +33,13 @@
 
     <div id="startOverlay">
         <h1 style="color:white; margin-bottom:30px; font-size: 40px;">拳之岩 - 柴犬冒險</h1>
-        <button id="btnStartGame">進入遊戲 (同步紀錄並啟動音訊)</button>
-        <p style="color:#888; margin-top:20px;">將自動匯入 fist_of_rock_records.json 紀錄</p>
+        <button id="btnStartGame">進入遊戲 (同步紀錄並啟動)</button>
+        <p style="color:#888; margin-top:20px;">系統將自動載入您的 88 關通關紀錄</p>
     </div>
 
     <div class="header">
         <h1>拳之岩 - 柴犬冒險</h1>
-        <div class="stats" id="stats">初始化中...</div>
+        <div class="stats" id="stats">載入中...</div>
     </div>
 
     <div class="controls">
@@ -47,7 +47,7 @@
         <select id="levelSelect"></select>
         <button id="btnReset">重玩 (S)</button>
         <button id="btnUndo">悔棋 (R)</button>
-        <button id="btnReplay" class="btn-replay">觀看重播</button>
+        <button id="btnReplay" class="btn-replay">觀看紀錄重播</button>
         <button id="btnMusic" class="btn-music">🎵 音樂：開啟</button>
     </div>
 
@@ -60,7 +60,6 @@
     <py-config>
         terminal = false
         [[fetch]]
-        # 同時抓取關卡與現有的紀錄檔
         files = ["levels.json", "fist_of_rock_records.json"]
     </py-config>
 
@@ -116,25 +115,34 @@
                 with open("levels.json", "r") as f:
                     self.all_levels = json.load(f)
                 
-                # 2. 關鍵修改：匯入外部紀錄檔到 localStorage
+                # 2. 匯入紀錄到 localStorage 供 UI 使用
                 try:
                     with open("fist_of_rock_records.json", "r") as f:
-                        external_records = json.load(f)
-                        for lvl_key, data in external_records.items():
-                            # 同步到瀏覽器儲存空間，確保重播按鈕有資料
+                        external_recs = json.load(f)
+                        for lvl_key, data in external_recs.items():
                             js.localStorage.setItem(f"level_{lvl_key}", json.dumps(data))
-                    print("成功同步外部紀錄檔")
                 except:
-                    print("未發現外部紀錄檔，使用瀏覽器現有儲存")
+                    pass
 
-                # 3. 填充選單
+                # 3. 渲染選單標籤
+                self.refresh_level_menu()
+
+            def refresh_level_menu(self):
                 select = js.document.getElementById("levelSelect")
                 select.innerHTML = ""
                 for i in range(len(self.all_levels)):
                     opt = js.document.createElement("option")
                     opt.value = str(i)
-                    opt.text = f"第 {i+1} 關"
+                    
+                    # 檢查紀錄標記
+                    data_str = js.localStorage.getItem(f"level_{i}")
+                    if data_str:
+                        rec = json.loads(data_str)
+                        opt.text = f"第 {i+1} 關 [★ {rec.get('steps')}步 | {rec.get('time')}s]"
+                    else:
+                        opt.text = f"第 {i+1} 關"
                     select.add(opt)
+                select.value = str(self.current_level_idx)
 
             def reset_level(self):
                 level_data = self.all_levels[self.current_level_idx]
@@ -172,14 +180,13 @@
                 js.document.getElementById("stats").innerHTML = f"第 {self.current_level_idx+1} 關 | 步數: {self.steps}"
 
             def move(self, dx, dy, direction_name):
-                # 如果在重播，只接受系統指令
                 if self.is_replaying and direction_name not in ["Up", "Down", "Left", "Right"]: return
                 
                 self.facing = direction_name.lower()
                 nx, ny = self.px + dx, self.py + dy
                 
                 if not (0 <= nx < 12 and 0 <= ny < 12) or self.grid[ny][nx] == 'w':
-                    self.play_sfx("HitWall")
+                    if not self.is_replaying: self.play_sfx("HitWall")
                     self.draw()
                     return
 
@@ -195,25 +202,26 @@
                         can_push = False
                         if beyond == 'e' or (target == 'k' and beyond == 'h'):
                             can_push = True
-                            self.play_sfx("MoveItem")
+                            if not self.is_replaying: self.play_sfx("MoveItem")
                         elif target in RULES and beyond == RULES[target]:
                             can_push = True
-                            self.play_sfx(SOUND_MAP[target])
+                            if not self.is_replaying: self.play_sfx(SOUND_MAP[target])
                         
                         if can_push:
                             if target == 'k' and beyond == 'h':
                                 self.draw()
-                                js.alert(f"完成關卡！步數：{self.steps+1}")
-                                self.save_record(self.steps+1)
-                                self.current_level_idx += 1
-                                self.reset_level()
-                                js.document.getElementById("levelSelect").value = str(self.current_level_idx)
+                                if not self.is_replaying:
+                                    js.alert(f"完成關卡！步數：{self.steps+1}")
+                                    self.save_record(self.steps+1)
+                                    self.current_level_idx += 1
+                                    self.refresh_level_menu()
+                                    self.reset_level()
                                 return
                             self.grid[nny][nnx] = target
                             self.grid[ny][nx] = 'e'
                             self.apply_move(nx, ny, old_state, direction_name)
                         else:
-                            self.play_sfx("HitWall")
+                            if not self.is_replaying: self.play_sfx("HitWall")
                 self.draw()
 
             def apply_move(self, nx, ny, state, d_name):
@@ -231,14 +239,14 @@
                     self.draw()
 
             def save_record(self, steps):
-                rec = {"steps": steps, "replay": self.move_history_keys}
+                # 過關時存檔並更新 UI
+                rec = {"steps": steps, "replay": self.move_history_keys, "time": "HandPlay"}
                 js.localStorage.setItem(f"level_{self.current_level_idx}", json.dumps(rec))
 
             def start_auto_replay(self):
-                # 網頁版優先從 localStorage 讀取
                 data = js.localStorage.getItem(f"level_{self.current_level_idx}")
                 if not data:
-                    js.alert("本關無紀錄，請先嘗試過關或確認紀錄檔已放置。")
+                    js.alert("無紀錄")
                     return
                 
                 replay_moves = json.loads(data)["replay"]
@@ -251,10 +259,9 @@
                         dirs = {"Up":(0,-1),"Down":(0,1),"Left":(-1,0),"Right":(1,0)}
                         dx, dy = dirs[move_name]
                         self.move(dx, dy, move_name)
-                        js.setTimeout(create_proxy(lambda: run_steps(idx + 1)), 200)
+                        js.setTimeout(create_proxy(lambda: run_steps(idx + 1)), 250)
                     else:
                         self.is_replaying = False
-
                 run_steps(0)
 
             def toggle_music(self, event=None):
