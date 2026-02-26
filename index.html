@@ -3,57 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>拳之岩 - 手機/電腦通用版</title>
+    <title>拳之岩 - 掌機修復版</title>
     <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
     <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
     <style>
         body { background-color: #2b2b2b; color: white; display: flex; flex-direction: column; align-items: center; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 10px; touch-action: manipulation; }
-        .header h1 { font-size: 24px; margin: 10px 0; }
-        .controls { background: #3c3f41; padding: 10px; border-radius: 8px; display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 480px; }
+        .header h1 { font-size: 22px; margin: 5px 0; color: #eee; }
         
-        /* 畫布自適應 */
-        canvas { border: 4px solid #444; background-color: #2b2b2b; width: 100%; max-width: 480px; height: auto; image-rendering: pixelated; }
+        .top-bar { display: flex; gap: 10px; margin-bottom: 10px; width: 100%; max-width: 480px; justify-content: center; align-items: center; }
         
-        .stats { font-size: 16px; font-weight: bold; color: #2ecc71; margin: 5px 0; }
-        button, select { padding: 8px 12px; cursor: pointer; border: none; border-radius: 4px; background: #3498db; color: white; font-size: 14px; }
+        canvas { border: 4px solid #444; background-color: #2b2b2b; width: 100%; max-width: 480px; height: auto; border-radius: 8px; }
         
-        /* 手機虛擬按鈕組樣式 */
-        .mobile-pad { display: grid; grid-template-areas: ". up ." "left . right" ". down ."; gap: 10px; margin-top: 15px; }
-        .joy-btn { width: 60px; height: 60px; background: #555; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; user-select: none; -webkit-tap-highlight-color: transparent; }
-        .joy-btn:active { background: #888; transform: scale(0.9); }
-        .btn-up { grid-area: up; } .btn-down { grid-area: down; } .btn-left { grid-area: left; } .btn-right { grid-area: right; }
+        .stats { font-size: 18px; font-weight: bold; color: #2ecc71; margin: 10px 0; }
+
+        .controller-panel { 
+            display: flex; 
+            justify-content: space-around; 
+            align-items: center; 
+            width: 100%; 
+            max-width: 480px; 
+            margin-top: 20px;
+            background: rgba(60, 63, 65, 0.6);
+            padding: 20px 0;
+            border-radius: 20px;
+        }
+
+        .func-keys { display: flex; flex-direction: column; gap: 12px; }
+        .btn-circle { 
+            width: 65px; height: 65px; border-radius: 50%; border: none;
+            color: white; font-weight: bold; font-size: 15px; cursor: pointer;
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 4px #1a1a1a;
+        }
+        .btn-circle:active { transform: translateY(2px); box-shadow: 0 2px #1a1a1a; }
+        .bg-red { background: #e74c3c; }
+        .bg-orange { background: #f39c12; }
+        .bg-yellow { background: #f1c40f; color: black; }
+
+        .d-pad { display: grid; grid-template-areas: ". up ." "left . right" ". down ."; gap: 10px; }
+        .joy-btn { 
+            width: 70px; height: 70px; background: #555; border-radius: 15px; 
+            display: flex; justify-content: center; align-items: center; 
+            font-size: 30px; user-select: none; -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 4px #333;
+        }
+        .joy-btn:active { background: #777; transform: translateY(2px); box-shadow: 0 2px #333; }
+        .btn-up { grid-area: up; } .btn-down { grid-area: down; } 
+        .btn-left { grid-area: left; } .btn-right { grid-area: right; }
 
         #startOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20, 20, 20, 0.98); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; }
-        #btnStartGame { padding: 20px 40px; font-size: 24px; background: #2ecc71; color: white; border-radius: 50px; border: none; }
+        #btnStartGame { padding: 20px 40px; font-size: 24px; background: #2ecc71; color: white; border-radius: 50px; border: none; font-weight: bold; }
+        
+        select { background: #444; color: white; border: 1px solid #666; padding: 6px; border-radius: 5px; font-size: 14px; }
     </style>
 </head>
 <body>
 
     <div id="startOverlay">
         <h1 style="color:white; margin-bottom:30px;">拳之岩</h1>
-        <button id="btnStartGame">開始遊戲</button>
+        <button id="btnStartGame">進入遊戲</button>
     </div>
 
     <div class="header">
         <h1>拳之岩 - 柴犬冒險</h1>
-        <div class="stats" id="stats">載入中...</div>
     </div>
 
-    <div class="controls">
+    <div class="top-bar">
         <select id="levelSelect"></select>
-        <button id="btnUndo">悔棋</button>
-        <button id="btnReset">重玩</button>
-        <button id="btnReplay" style="background:#f1c40f; color:black;">重播</button>
-        <button id="btnMusic" style="background:#9b59b6;">🎵 音樂</button>
+        <button id="btnMusic" style="background:#9b59b6;">🎵 音樂：開</button>
     </div>
+
+    <div class="stats" id="stats">載入中...</div>
 
     <canvas id="gameCanvas" width="480" height="480"></canvas>
 
-    <div class="mobile-pad">
-        <div class="joy-btn btn-up" id="padUp">▲</div>
-        <div class="joy-btn btn-left" id="padLeft">◀</div>
-        <div class="joy-btn btn-right" id="padRight">▶</div>
-        <div class="joy-btn btn-down" id="padDown">▼</div>
+    <div class="controller-panel">
+        <div class="func-keys">
+            <button id="btnReset" class="btn-circle bg-red">重玩</button>
+            <button id="btnUndo" class="btn-circle bg-orange">悔棋</button>
+            <button id="btnReplay" class="btn-circle bg-yellow">重播</button>
+        </div>
+
+        <div class="d-pad">
+            <div class="joy-btn btn-up" id="padUp">▲</div>
+            <div class="joy-btn btn-left" id="padLeft">◀</div>
+            <div class="joy-btn btn-right" id="padRight">▶</div>
+            <div class="joy-btn btn-down" id="padDown">▼</div>
+        </div>
     </div>
 
     <py-config>
@@ -100,6 +136,18 @@
                     self.images[key] = img
                 self.bgm = js.Audio.new("背景音樂.mp3")
                 self.bgm.loop = True
+
+            def toggle_music(self, event=None):
+                self.music_on = not self.music_on
+                btn = js.document.getElementById("btnMusic")
+                if self.music_on:
+                    self.bgm.play()
+                    btn.innerHTML = "🎵 音樂：開"
+                    btn.style.background = "#9b59b6"
+                else:
+                    self.bgm.pause()
+                    btn.innerHTML = "🔇 音樂：關"
+                    btn.style.background = "#e74c3c"
 
             def play_sfx(self, name):
                 if self.music_on:
@@ -218,26 +266,40 @@
                 run_steps(0)
 
             def bind_events(self):
-                js.document.getElementById("btnStartGame").onclick = create_proxy(lambda e: (js.document.getElementById("startOverlay").style.setProperty("display", "none"), self.bgm.play()))
+                # 啟動按鈕
+                def start_game_clicked(event):
+                    js.document.getElementById("startOverlay").style.display = "none"
+                    if self.music_on:
+                        self.bgm.play()
+                js.document.getElementById("btnStartGame").onclick = create_proxy(start_game_clicked)
                 
+                # 音樂切換
+                js.document.getElementById("btnMusic").onclick = create_proxy(self.toggle_music)
+
                 # 鍵盤
                 def on_key(e):
                     if e.key == "ArrowUp": self.move(0, -1, "Up")
                     elif e.key == "ArrowDown": self.move(0, 1, "Down")
                     elif e.key == "ArrowLeft": self.move(-1, 0, "Left")
                     elif e.key == "ArrowRight": self.move(1, 0, "Right")
+                    elif e.key.lower() == "r": self.undo()
+                    elif e.key.lower() == "s": self.reset_level()
                 js.window.addEventListener("keydown", create_proxy(on_key))
 
-                # 觸控搖桿
+                # 觸控
                 js.document.getElementById("padUp").onclick = create_proxy(lambda e: self.move(0, -1, "Up"))
                 js.document.getElementById("padDown").onclick = create_proxy(lambda e: self.move(0, 1, "Down"))
                 js.document.getElementById("padLeft").onclick = create_proxy(lambda e: self.move(-1, 0, "Left"))
                 js.document.getElementById("padRight").onclick = create_proxy(lambda e: self.move(1, 0, "Right"))
-
                 js.document.getElementById("btnReset").onclick = create_proxy(lambda e: self.reset_level())
                 js.document.getElementById("btnUndo").onclick = create_proxy(lambda e: self.undo())
                 js.document.getElementById("btnReplay").onclick = create_proxy(lambda e: self.start_auto_replay())
-                js.document.getElementById("levelSelect").onchange = create_proxy(lambda e: (setattr(self, 'current_level_idx', int(e.target.value)), self.reset_level()))
+                
+                # 選單
+                def on_change(e):
+                    self.current_level_idx = int(e.target.value)
+                    self.reset_level()
+                js.document.getElementById("levelSelect").onchange = create_proxy(on_change)
 
         game = WebFistOfRock()
     </script>
